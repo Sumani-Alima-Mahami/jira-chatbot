@@ -1,58 +1,48 @@
+# main.py
+import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import os
-import requests
-from requests.auth import HTTPBasicAuth
 from openai import OpenAI
 
+# Initialize Flask app
 app = Flask(__name__)
-CORS(app)  # Enable CORS
+CORS(app)
 
-# --- API KEYS ---
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-JIRA_EMAIL = os.getenv("JIRA_EMAIL")
-JIRA_API_TOKEN = os.getenv("JIRA_API_TOKEN")
-JIRA_SITE = os.getenv("JIRA_URL", "https://netsolghana.atlassian.net")
-PROJECT_KEY = "NSD"
-
+# Initialize OpenAI client (v1.0+)
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    data = request.get_json()
-    message = data.get("message", "")
-
     try:
-        response = openai_client.chat.completions.create(
+        data = request.json
+        user_message = data.get("message")
+
+        if not user_message:
+            return jsonify({"error": "No message provided"}), 400
+
+        # Use the new OpenAI API
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": message}],
-            temperature=0.7,
+            messages=[{"role": "user", "content": user_message}]
         )
-        bot_reply = response.choices[0].message.content
-        return jsonify({"reply": bot_reply})
+
+        # Extract the model's reply
+        assistant_message = response.choices[0].message.content
+
+        return jsonify({"reply": assistant_message})
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/jira-test")
+@app.route("/jira-test", methods=["GET"])
 def jira_test():
-    jira_url = f"{JIRA_SITE}/rest/api/3/project"
-    auth = HTTPBasicAuth(JIRA_EMAIL, JIRA_API_TOKEN)
-    headers = {"Accept": "application/json"}
-
-    try:
-        r = requests.get(jira_url, headers=headers, auth=auth)
-        return jsonify({
-            "status": r.status_code,
-            "projects": r.json() if r.status_code == 200 else r.text
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/")
-def home():
-    return "✅ Jira Chatbot Server is running!"
+    # Example Jira integration placeholder
+    return jsonify({"status": "Jira endpoint works!"})
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
+
