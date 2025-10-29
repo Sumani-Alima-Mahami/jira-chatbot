@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: jira-ai-chatbot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn main:app
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: JIRA_EMAIL
+        sync: false
+      - key: JIRA_API_TOKEN
+        sync: false
