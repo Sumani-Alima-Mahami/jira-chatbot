@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: jira-ai-chatbot
+    name: jira-chatbot
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn main:app
