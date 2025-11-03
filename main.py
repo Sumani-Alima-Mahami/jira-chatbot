@@ -1,56 +1,67 @@
 from flask import Flask, request, jsonify
-import requests
-import openai
+from flask_cors import CORS
+from openai import OpenAI
+from dotenv import load_dotenv
 import os
-import json
-from requests.auth import HTTPBasicAuth
+import requests
+
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
+CORS(app)
 
-# --- API KEYS ---
-openai.api_key = os.getenv("OPENAI_API_KEY")
-JIRA_EMAIL = os.getenv("JIRA_EMAIL")
-JIRA_API_TOKEN = os.getenv("JIRA_API_TOKEN")
-JIRA_SITE = "https://netsolghana.atlassian.net"
-PROJECT_KEY = "NSD"
+# Initialize OpenAI client
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-@app.route("/chat", methods=["POST"])
-def chat():
-    user_message = request.json.get("message")
-
-    # Step 1: Get AI response
-    response = openai.ChatCompletion.create(
-        model="gpt-4-turbo",
-        messages=[{"role": "user", "content": user_message}],
-        temperature=0.5
-    )
-    bot_reply = response["choices"][0]["message"]["content"]
-
-    # Step 2: If unresolved, create Jira ticket
-    if "create ticket" in bot_reply.lower():
-        jira_url = f"{JIRA_SITE}/rest/api/3/issue"
-        headers = {"Accept": "application/json", "Content-Type": "application/json"}
-        payload = json.dumps({
-            "fields": {
-                "project": {"key": PROJECT_KEY},
-                "summary": user_message[:50],
-                "description": f"AI Chatbot created ticket for: {user_message}",
-                "issuetype": {"name": "Service Request"}
-            }
-        })
-        auth = HTTPBasicAuth(JIRA_EMAIL, JIRA_API_TOKEN)
-        response = requests.post(jira_url, headers=headers, data=payload, auth=auth)
-        if response.status_code == 201:
-            return jsonify({"reply": f"{bot_reply}\n✅ Ticket created successfully!"})
-        else:
-            return jsonify({"reply": f"{bot_reply}\n⚠️ Ticket creation failed."})
-
-    return jsonify({"reply": bot_reply})
-
-@app.route("/")
+@app.route('/')
 def home():
-    return "✅ Jira Chatbot Server is running!"
+    return "✅ Jira AI Chatbot is running!"
+
+@app.route('/chat', methods=['POST'])
+def chat():
+    try:
+        user_input = request.json.get("message", "")
+
+        # Generate response using OpenAI Chat Completions
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a helpful Jira assistant."},
+                {"role": "user", "content": user_input}
+            ]
+        )
+
+        reply = response.choices[0].message.content
+        return jsonify({"reply": reply})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/jira-test', methods=['GET'])
+def jira_test():
+    try:
+        jira_url = os.getenv("JIRA_URL")
+        jira_email = os.getenv("JIRA_EMAIL")
+        jira_token = os.getenv("JIRA_API_TOKEN")
+
+        if not all([jira_url, jira_email, jira_token]):
+            return jsonify({"error": "Jira credentials missing in .env"}), 400
+
+        res = requests.get(
+            f"{jira_url}/rest/api/3/project",
+            auth=(jira_email, jira_token)
+        )
+
+        if res.status_code == 200:
+            return jsonify(res.json())
+        else:
+            return jsonify({"error": "Failed to fetch Jira projects", "details": res.text}), res.status_code
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
-
