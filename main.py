@@ -8,12 +8,9 @@ import requests
 app = Flask(__name__)
 CORS(app)
 
-# Initialize OpenAI client using environment variable
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-if not OPENAI_API_KEY:
-    raise RuntimeError("OPENAI_API_KEY environment variable is not set")
-
-client = OpenAI(api_key=OPENAI_API_KEY)
+# Initialize OpenAI client
+# Using os.environ directly avoids dotenv issues on Render
+client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
 @app.route('/')
 def home():
@@ -68,6 +65,6 @@ def jira_test():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    # Use Render's PORT environment variable if available
+    # Render exposes port via environment variable
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
