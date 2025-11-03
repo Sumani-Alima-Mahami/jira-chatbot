@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jira Chatbot</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px;
+    }
+    h1 {
+      color: #333;
+    }
+    #chat-box {
+      width: 400px;
+      height: 400px;
+      overflow-y: auto;
+      background: white;
+      border: 1px solid #ccc;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+    .user {
+      text-align: right;
+      color: #0066ff;
+    }
+    .bot {
+      text-align: left;
+      color: #444;
+    }
+    #message-input {
+      width: 300px;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    button {
+      padding: 8px 16px;
+      background-color: #0066ff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #004ecc;
+    }
+  </style>
+</head>
+<body>
+  <h1>Jira Chatbot</h1>
+  <div id="chat-box"></div>
+  <div>
+    <input id="message-input" type="text" placeholder="Type a message..." />
+    <button onclick="sendMessage()">Send</button>
+  </div>
+
+  <script>
+    async function sendMessage() {
+      const input = document.getElementById("message-input");
+      const message = input.value.trim();
+      if (!message) return;
+
+      const chatBox = document.getElementById("chat-box");
+      chatBox.innerHTML += `<p class="user"><b>You:</b> ${message}</p>`;
+      input.value = "";
+
+      try {
+        const response = await fetch("https://jira-chatbot.onrender.com/chat", {
+
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message }),
+        });
+
+        const data = await response.json();
+        const botMessage = data.reply || "Sorry, I didn’t understand that.";
+
+        chatBox.innerHTML += `<p class="bot"><b>Bot:</b> ${botMessage}</p>`;
+      } catch (error) {
+        chatBox.innerHTML += `<p class="bot"><b>Bot:</b> ⚠️ Error connecting to server.</p>`;
+      }
+
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+  </script>
+</body>
+</html>
