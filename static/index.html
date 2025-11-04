@@ -134,14 +134,14 @@
       const chatBox = document.getElementById("chat-box");
       chatBox.innerHTML += `<div class="message user"><b>You:</b> ${message}</div>`;
       input.value = "";
-      conversationHistory.push({ role: "user", content: message });
+      
 
 
       try {
         const response = await fetch("/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({messages: conversationHistory }),
+          body: JSON.stringify({message }),
         });
 
         const data = await response.json();
