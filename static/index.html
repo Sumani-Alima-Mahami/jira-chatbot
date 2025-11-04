@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Netsol Support Chatbot</title>
+  <title>Jira Chatbot</title>
   <style>
     /* Reset and full-screen layout */
     html, body {
@@ -18,7 +18,7 @@
     }
 
     .header {
-      background-color: #004c99;
+      background-color: #0052cc;
       color: white;
       text-align: center;
       padding: 16px;
@@ -48,7 +48,7 @@
     .user {
       align-self: flex-end;
       background-color: #e6f0ff;
-      color: #004c99;
+      color: #004ecc;
     }
 
     .bot {
@@ -59,6 +59,8 @@
 
     .input-container {
       display: flex;
+      gap:10px;
+      justify-content: center;
       border-top: 1px solid #ddd;
       background-color: #fafbfc;
       padding: 10px;
@@ -66,6 +68,8 @@
 
     #message-input {
       flex: 1;
+      min-width:200px;
+      max-width: 400px;
       padding: 12px;
       border-radius: 8px;
       border: 1px solid #ccc;
@@ -76,7 +80,7 @@
     button {
       margin-left: 10px;
       padding: 12px 18px;
-      background-color: #004c99;
+      background-color: #0052cc;
       color: white;
       border: none;
       border-radius: 8px;
@@ -99,7 +103,7 @@
   </style>
 </head>
 <body>
-  <div class="header"> Netsol Support Chatbot</div>
+  <div class="header">💬 Jira Chatbot</div>
 
   <div id="chat-box"></div>
 
@@ -127,4 +131,13 @@
 
         const data = await response.json();
         const botMessage = data.reply || "Sorry, I didn’t understand that.";
-        chatBox.innerHTML += `<div class="message bot"><b
+        chatBox.innerHTML += `<div class="message bot"><b>Bot:</b> ${botMessage}</div>`;
+      } catch (error) {
+        chatBox.innerHTML += `<div class="message bot"><b>Bot:</b> ⚠️ Error connecting to server.</div>`;
+      }
+
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+  </script>
+</body>
+</html>
