@@ -39,7 +39,7 @@ def chat():
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "You are a helpful Jira assistant."},
+                {"role": "system", "content": "You are a helpful  assistant."},
                 {"role": "user", "content": user_input}
             ]
         )

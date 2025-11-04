@@ -1,13 +1,13 @@
 services:
   - type: web
-    name: jira-chatbot
+    name: NETSOL SUPPORT Chatbot
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn main:app
     envVars:
       - key: OPENAI_API_KEY
         sync: false
-      - key: JIRA_EMAIL
+      - key: NETSOL_EMAIL
         sync: false
       - key: JIRA_API_TOKEN
         sync: false
