@@ -11,6 +11,13 @@ load_dotenv()
 app = Flask(__name__, static_folder="static")
 CORS(app)
 
+# ✅ Allow embedding in Confluence (important!)
+@app.after_request
+def add_headers(response):
+    response.headers["X-Frame-Options"] = "ALLOWALL"
+    response.headers["Content-Security-Policy"] = "frame-ancestors *"
+    return response
+
 # Initialize OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
