@@ -1,47 +1,93 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from openai import OpenAI
-from dotenv import load_dotenv
-import os
-import requests
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jira Chatbot</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px;
+    }
+    h1 {
+      color: #333;
+    }
+    #chat-box {
+      width: 400px;
+      height: 400px;
+      overflow-y: auto;
+      background: white;
+      border: 1px solid #ccc;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+    .user {
+      text-align: right;
+      color: #0066ff;
+    }
+    .bot {
+      text-align: left;
+      color: #444;
+    }
+    #message-input {
+      width: 300px;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    button {
+      padding: 8px 16px;
+      background-color: #0066ff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #004ecc;
+    }
+  </style>
+</head>
+<body>
+  <h1>Jira Chatbot</h1>
+  <div id="chat-box"></div>
+  <div>
+    <input id="message-input" type="text" placeholder="Type a message..." />
+    <button onclick="sendMessage()">Send</button>
+  </div>
 
-load_dotenv()
-app = Flask(__name__)
-CORS(app)
+  <script>
+    async function sendMessage() {
+      const input = document.getElementById("message-input");
+      const message = input.value.trim();
+      if (!message) return;
 
-# Initialize OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+      const chatBox = document.getElementById("chat-box");
+      chatBox.innerHTML += `<p class="user"><b>You:</b> ${message}</p>`;
+      input.value = "";
 
-@app.route("/")
-def home():
-    return "✅ Jira AI Chatbot is running!"
+      try {
+        const response = await fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message }),
+        });
 
-@app.route("/chat", methods=["POST"])
-def chat():
-    try:
-        data = request.get_json()
-        user_input = data.get("message", "").strip()
+        const data = await response.json();
+        const botMessage = data.reply || "Sorry, I didn’t understand that.";
 
-        if not user_input:
-            return jsonify({"reply": "Please say something!"}), 400
+        chatBox.innerHTML += `<p class="bot"><b>Bot:</b> ${botMessage}</p>`;
+      } catch (error) {
+        chatBox.innerHTML += `<p class="bot"><b>Bot:</b> ⚠️ Error connecting to server.</p>`;
+      }
 
-        # Generate OpenAI response
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are a helpful Jira assistant."},
-                {"role": "user", "content": user_input}
-            ]
-        )
-
-        reply = response.choices[0].message.content
-        return jsonify({"reply": reply})
-
-    except Exception as e:
-        # Log the error to console (Render logs)
-        print(f"🔥 Error in /chat: {e}")
-        return jsonify({"error": str(e), "reply": "⚠️ Something went wrong on the server."}), 500
-
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+  </script>
+</body>
+</html>
