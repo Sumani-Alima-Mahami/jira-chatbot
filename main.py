@@ -1,16 +1,18 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from openai import OpenAI
+from dotenv import load_dotenv
 import os
 import requests
 
-# Initialize Flask app
+# Load environment variables
+load_dotenv()
+
 app = Flask(__name__)
 CORS(app)
 
 # Initialize OpenAI client
-# Using os.environ directly avoids dotenv issues on Render
-client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 @app.route('/')
 def home():
@@ -20,10 +22,7 @@ def home():
 def chat():
     try:
         user_input = request.json.get("message", "")
-        if not user_input:
-            return jsonify({"error": "No message provided"}), 400
 
-        # Generate response using OpenAI Chat Completions
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -38,15 +37,16 @@ def chat():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 @app.route('/jira-test', methods=['GET'])
 def jira_test():
     try:
-        jira_url = os.environ.get("JIRA_URL")
-        jira_email = os.environ.get("JIRA_EMAIL")
-        jira_token = os.environ.get("JIRA_API_TOKEN")
+        jira_url = os.getenv("JIRA_URL")
+        jira_email = os.getenv("JIRA_EMAIL")
+        jira_token = os.getenv("JIRA_API_TOKEN")
 
         if not all([jira_url, jira_email, jira_token]):
-            return jsonify({"error": "Jira credentials missing"}), 400
+            return jsonify({"error": "Jira credentials missing in .env"}), 400
 
         res = requests.get(
             f"{jira_url}/rest/api/3/project",
@@ -56,15 +56,12 @@ def jira_test():
         if res.status_code == 200:
             return jsonify(res.json())
         else:
-            return jsonify({
-                "error": "Failed to fetch Jira projects",
-                "details": res.text
-            }), res.status_code
+            return jsonify({"error": "Failed to fetch Jira projects", "details": res.text}), res.status_code
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 if __name__ == "__main__":
-    # Render exposes port via environment variable
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=8080)
+
