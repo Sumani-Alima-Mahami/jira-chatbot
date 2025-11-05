@@ -88,9 +88,9 @@ def create_ticket():
         }
 
         response = requests.post(
-            f"{jira_url}/rest/api/3/issue",
+            f"{netsol_url}/rest/api/3/issue",
             json=issue_data,
-            auth=HTTPBasicAuth(jira_email, jira_api_token),
+            auth=HTTPBasicAuth(netsol_email, netsol_api_token),
             headers={"Accept": "application/json", "Content-Type": "application/json"}
         )
 
