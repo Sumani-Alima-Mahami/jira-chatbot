@@ -157,7 +157,7 @@
       const message = inputField.value.trim();
       if (!message) return;
 
-      appendMessage("user", message);
+      appendMessage("user", `<b>You:</b> ${message}`);
       conversationHistory.push({ role: "user", content: message });
       inputField.value = "";
 
@@ -187,12 +187,16 @@
     }
 
     function appendBotMessage(botMessage, userMessage) {
+      // Encode messages to safely handle quotes and special characters
+      const encodedUserMessage = encodeURIComponent(userMessage);
+      const encodedBotMessage = encodeURIComponent(botMessage);
+
       chatBox.innerHTML += `
         <div class="message bot">
           ${botMessage.replace(/\n/g, "<br>")}
           <div class="feedback-buttons">
             <button class="helpful" onclick="markHelpful(this)">✅ Helpful</button>
-            <button class="not-helpful" onclick="createJiraTicket('${userMessage}', '${botMessage}')">❌ Not Helpful</button>
+            <button class="not-helpful" onclick="createJiraTicket(decodeURIComponent('${encodedUserMessage}'), decodeURIComponent('${encodedBotMessage}'))">❌ Not Helpful</button>
           </div>
         </div>
       `;

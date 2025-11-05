@@ -12,15 +12,22 @@ load_dotenv()
 app = Flask(__name__, static_folder="static")
 CORS(app)
 
-#  Allow embedding in Confluence
+# Allow embedding in Confluence or other iframes
 @app.after_request
 def add_headers(response):
     response.headers["X-Frame-Options"] = "ALLOWALL"
     response.headers["Content-Security-Policy"] = "frame-ancestors *"
     return response
 
-# Initialize OpenAI client
+# OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# Jira configuration
+jira_url = os.getenv("NETSOL_URL")
+jira_project_key = os.getenv("JIRA_PROJECT_KEY")
+jira_email = os.getenv("NETSOL_EMAIL")
+jira_api_token = os.getenv("NETSOL_API_TOKEN")
+
 
 @app.route("/")
 def home():
@@ -47,7 +54,6 @@ def chat():
                 )
             })
 
-        # Generate AI response
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages
@@ -63,45 +69,40 @@ def chat():
 
 @app.route("/create-ticket", methods=["POST"])
 def create_ticket():
-    """
-    Creates a Jira ticket using user question and bot reply.
-    Expects JSON: { "userMessage": "...", "botMessage": "..." }
-    """
     try:
         data = request.get_json()
-        user_message = data.get("userMessage", "").strip()
-        bot_message = data.get("botMessage", "").strip()
+        user_message = data.get("userMessage", "")
+        bot_message = data.get("botMessage", "")
 
         if not user_message or not bot_message:
-            return jsonify({"error": "Missing userMessage or botMessage"}), 400
+            return jsonify({"error": "Missing message content"}), 400
 
-        netsol_url = os.getenv("NETSOL_URL")  # e.g., "https://your-domain.atlassian.net"
-        netsol_project = os.getenv("JIRA_PROJECT_KEY")  # e.g., "SUP"
-        netsol_email = os.getenv("NETSOL_EMAIL")  # Jira account email
-        netsol_api_token = os.getenv("NETSOL_API_TOKEN")  # Jira API token
-
-        payload = {
+        # Prepare Jira issue payload
+        issue_data = {
             "fields": {
-                "project": {"key": jira_project},
-                "summary": f"Support request: {user_message[:50]}",
-                "description": f"User question:\n{user_message}\n\nBot reply:\n{bot_message}",
-                "issuetype": {"name": "Task"}  # Adjust as needed (Task, Bug, Story)
+                "project": {"key": jira_project_key},
+                "summary": f"Support request from chatbot: {user_message[:50]}",
+                "description": f"User Message:\n{user_message}\n\nBot Response:\n{bot_message}",
+                "issuetype": {"name": "Task"}
             }
         }
 
         response = requests.post(
-            f"{jira_url}/rest/api/2/issue",
-            json=payload,
+            f"{jira_url}/rest/api/3/issue",
+            json=issue_data,
             auth=HTTPBasicAuth(jira_email, jira_api_token),
-            headers={"Content-Type": "application/json"}
+            headers={"Accept": "application/json", "Content-Type": "application/json"}
         )
 
-        response.raise_for_status()
-        ticket_data = response.json()
-        return jsonify({"ticketKey": ticket_data.get("key")})
+        if response.status_code == 201:
+            ticket_key = response.json().get("key")
+            return jsonify({"ticketKey": ticket_key})
+        else:
+            print(f"Jira API error: {response.status_code} {response.text}")
+            return jsonify({"error": "Failed to create ticket"}), 500
 
     except Exception as e:
-        print(f"🔥 Error creating Jira ticket: {e}")
+        print(f"🔥 Error in /create-ticket: {e}")
         return jsonify({"error": str(e)}), 500
 
 
