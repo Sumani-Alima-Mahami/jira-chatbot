@@ -23,10 +23,10 @@ def add_headers(response):
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Jira configuration
-jira_url = os.getenv("NETSOL_URL")
+netsol_url = os.getenv("NETSOL_URL")
 jira_project_key = os.getenv("JIRA_PROJECT_KEY")
-jira_email = os.getenv("NETSOL_EMAIL")
-jira_api_token = os.getenv("NETSOL_API_TOKEN")
+netsol_email = os.getenv("NETSOL_EMAIL")
+netsol_api_token = os.getenv("NETSOL_API_TOKEN")
 
 
 @app.route("/")
