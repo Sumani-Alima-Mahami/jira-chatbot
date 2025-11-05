@@ -67,6 +67,30 @@
       color: #333;
     }
 
+    .feedback-buttons {
+      margin-top: 5px;
+      display: flex;
+      gap: 5px;
+    }
+
+    .feedback-buttons button {
+      padding: 4px 8px;
+      font-size: 13px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: none;
+    }
+
+    .feedback-buttons button.helpful {
+      background-color: #28a745;
+      color: white;
+    }
+
+    .feedback-buttons button.not-helpful {
+      background-color: #dc3545;
+      color: white;
+    }
+
     .input-container {
       display: flex;
       border-top: 1px solid #eee;
@@ -83,7 +107,7 @@
       outline: none;
     }
 
-    button {
+    #send-btn {
       margin-left: 10px;
       padding: 10px 16px;
       background-color: #0052cc;
@@ -94,7 +118,7 @@
       font-weight: 500;
     }
 
-    button:hover {
+    #send-btn:hover {
       background-color: #0747a6;
     }
 
@@ -112,12 +136,11 @@
 
     <div class="input-container">
       <input id="message-input" type="text" placeholder="Type a message..." />
-      <button onclick="sendMessage()">Send</button>
+      <button id="send-btn">Send</button>
     </div>
   </div>
 
   <script>
-    // Keep multi-turn conversation context
     const conversationHistory = [
       {
         role: "system",
@@ -128,17 +151,15 @@
 
     const chatBox = document.getElementById("chat-box");
     const inputField = document.getElementById("message-input");
+    const sendBtn = document.getElementById("send-btn");
 
     async function sendMessage() {
       const message = inputField.value.trim();
       if (!message) return;
 
-      // Display user message
-      chatBox.innerHTML += `<div class="message user"><b>You:</b> ${message}</div>`;
-      inputField.value = "";
-
-      // Add user message to conversation
+      appendMessage("user", message);
       conversationHistory.push({ role: "user", content: message });
+      inputField.value = "";
 
       try {
         const response = await fetch("/chat", {
@@ -150,23 +171,63 @@
         const data = await response.json();
         const botMessage = data.reply || "Sorry, I didn’t understand that.";
 
-        // Display bot message
-        chatBox.innerHTML += `<div class="message bot">${botMessage}</div>`;
-
-        // Add bot message to conversation
+        appendBotMessage(botMessage, message);
         conversationHistory.push({ role: "assistant", content: botMessage });
 
       } catch (error) {
-        chatBox.innerHTML += `<div class="message bot">⚠️ Error connecting to server.</div>`;
+        appendMessage("bot", "⚠️ Error connecting to server.");
       }
 
       chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    // Send message on Enter key
+    function appendMessage(role, text) {
+      chatBox.innerHTML += `<div class="message ${role}">${text}</div>`;
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function appendBotMessage(botMessage, userMessage) {
+      chatBox.innerHTML += `
+        <div class="message bot">
+          ${botMessage.replace(/\n/g, "<br>")}
+          <div class="feedback-buttons">
+            <button class="helpful" onclick="markHelpful(this)">✅ Helpful</button>
+            <button class="not-helpful" onclick="createJiraTicket('${userMessage}', '${botMessage}')">❌ Not Helpful</button>
+          </div>
+        </div>
+      `;
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function markHelpful(button) {
+      button.parentElement.innerHTML = "<i>Marked as helpful ✅</i>";
+    }
+
+    async function createJiraTicket(userMessage, botMessage) {
+      try {
+        const response = await fetch("/create-ticket", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userMessage, botMessage })
+        });
+
+        const data = await response.json();
+        if (data.ticketKey) {
+          appendMessage("bot", `✅ Ticket created: ${data.ticketKey}`);
+        } else {
+          appendMessage("bot", "⚠️ Failed to create a ticket.");
+        }
+      } catch (error) {
+        appendMessage("bot", "⚠️ Error connecting to server.");
+      }
+    }
+
+    // Send message on Enter
     inputField.addEventListener("keydown", function(e) {
       if (e.key === "Enter") sendMessage();
     });
+
+    sendBtn.addEventListener("click", sendMessage);
   </script>
 </body>
 </html>
