@@ -52,6 +52,7 @@
       max-width: 80%;
       line-height: 1.4;
       font-size: 15px;
+      white-space: pre-line;
     }
 
     .user {
@@ -106,7 +107,7 @@
 </head>
 <body>
   <div class="chat-container">
-    <div class="header"> Netsol Support Chatbot</div>
+    <div class="header">Netsol Support Chatbot</div>
     <div id="chat-box"></div>
 
     <div class="input-container">
@@ -116,43 +117,56 @@
   </div>
 
   <script>
-      // Keep conversation context
-  const conversationHistory = [
-    {
-      role: "system",
-      content: "You are a helpful, concise, and professional support assistant for the Netsol Support team. " +
-               "Answer in structured steps or bullets. Use a friendly tone. Assist with NetSol queries."
-    }
-  ];
+    // Keep multi-turn conversation context
+    const conversationHistory = [
+      {
+        role: "system",
+        content: "You are a helpful, concise, and professional support assistant for the Netsol Support team. " +
+                 "Answer in structured steps or bullets. Use a friendly tone. Assist with NetSol queries."
+      }
+    ];
 
+    const chatBox = document.getElementById("chat-box");
+    const inputField = document.getElementById("message-input");
 
     async function sendMessage() {
-      const input = document.getElementById("message-input");
-      const message = input.value.trim();
+      const message = inputField.value.trim();
       if (!message) return;
 
-      const chatBox = document.getElementById("chat-box");
+      // Display user message
       chatBox.innerHTML += `<div class="message user"><b>You:</b> ${message}</div>`;
-      input.value = "";
-      
+      inputField.value = "";
 
+      // Add user message to conversation
+      conversationHistory.push({ role: "user", content: message });
 
       try {
         const response = await fetch("/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({message }),
+          body: JSON.stringify({ messages: conversationHistory })
         });
 
         const data = await response.json();
         const botMessage = data.reply || "Sorry, I didn’t understand that.";
-        chatBox.innerHTML += `<div class="message bot"><b>Bot:</b> ${botMessage}</div>`;
+
+        // Display bot message
+        chatBox.innerHTML += `<div class="message bot">${botMessage}</div>`;
+
+        // Add bot message to conversation
+        conversationHistory.push({ role: "assistant", content: botMessage });
+
       } catch (error) {
-        chatBox.innerHTML += `<div class="message bot"><b>Bot:</b> ⚠️ Error connecting to server.</div>`;
+        chatBox.innerHTML += `<div class="message bot">⚠️ Error connecting to server.</div>`;
       }
 
       chatBox.scrollTop = chatBox.scrollHeight;
     }
+
+    // Send message on Enter key
+    inputField.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") sendMessage();
+    });
   </script>
 </body>
 </html>
