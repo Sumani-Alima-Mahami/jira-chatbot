@@ -12,7 +12,7 @@ load_dotenv()
 app = Flask(__name__, static_folder="static")
 CORS(app)
 
-# Allow embedding in Confluence or other iframes
+#  Embedding in Confluence
 @app.after_request
 def add_headers(response):
     response.headers["X-Frame-Options"] = "ALLOWALL"
@@ -22,7 +22,7 @@ def add_headers(response):
 # OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Jira configuration
+# configuration
 netsol_url = os.getenv("NETSOL_URL")
 jira_project_key = os.getenv("JIRA_PROJECT_KEY")
 netsol_email = os.getenv("NETSOL_EMAIL")
@@ -43,7 +43,7 @@ def chat():
         if not messages:
             return jsonify({"reply": "Please say something!"}), 400
 
-        # Ensure system prompt is first
+        # Ensure system prompt
         if not any(m['role'] == 'system' for m in messages):
             messages.insert(0, {
                 "role": "system",
@@ -63,7 +63,7 @@ def chat():
         return jsonify({"reply": bot_reply})
 
     except Exception as e:
-        print(f"🔥 Error in /chat: {e}")
+        print(f" Error in /chat: {e}")
         return jsonify({"error": str(e), "reply": "⚠️ Something went wrong on the server."}), 500
 
 
@@ -102,7 +102,7 @@ def create_ticket():
             return jsonify({"error": "Failed to create ticket"}), 500
 
     except Exception as e:
-        print(f"🔥 Error in /create-ticket: {e}")
+        print(f" Error in /create-ticket: {e}")
         return jsonify({"error": str(e)}), 500
 
 

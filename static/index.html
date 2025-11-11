@@ -144,8 +144,9 @@
     const conversationHistory = [
       {
         role: "system",
-        content: "You are a helpful, concise, and professional support assistant for the Netsol Support team. " +
-                 "Answer in structured steps or bullets. Use a friendly tone. Assist with NetSol queries."
+        content:
+          "You are a helpful, concise, and professional support assistant for the Netsol Support team. " +
+          "Answer in structured steps or bullets. Use a friendly tone. Assist with NetSol queries."
       }
     ];
 
@@ -170,10 +171,8 @@
 
         const data = await response.json();
         const botMessage = data.reply || "Sorry, I didn’t understand that.";
-
         appendBotMessage(botMessage, message);
         conversationHistory.push({ role: "assistant", content: botMessage });
-
       } catch (error) {
         appendMessage("bot", "⚠️ Error connecting to server.");
       }
@@ -187,7 +186,6 @@
     }
 
     function appendBotMessage(botMessage, userMessage) {
-      // Encode messages to safely handle quotes and special characters
       const encodedUserMessage = encodeURIComponent(userMessage);
       const encodedBotMessage = encodeURIComponent(botMessage);
 
@@ -196,7 +194,7 @@
           ${botMessage.replace(/\n/g, "<br>")}
           <div class="feedback-buttons">
             <button class="helpful" onclick="markHelpful(this)">✅ Helpful</button>
-            <button class="not-helpful" onclick="createJiraTicket(decodeURIComponent('${encodedUserMessage}'), decodeURIComponent('${encodedBotMessage}'))">❌ Not Helpful</button>
+            <button class="not-helpful" onclick="createJiraTicket('${encodedUserMessage}', '${encodedBotMessage}')">❌ Not Helpful</button>
           </div>
         </div>
       `;
@@ -207,27 +205,40 @@
       button.parentElement.innerHTML = "<i>Marked as helpful ✅</i>";
     }
 
-    async function createJiraTicket(userMessage, botMessage) {
+    async function createJiraTicket(encodedUserMessage, encodedBotMessage) {
       try {
+        const userMessage = decodeURIComponent(encodedUserMessage);
+        const botMessage = decodeURIComponent(encodedBotMessage);
+
+        console.log("📝 Creating Jira ticket...");
+        console.log("User message:", userMessage);
+        console.log("Bot message:", botMessage);
+
         const response = await fetch("/create-ticket", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userMessage, botMessage })
         });
 
+        console.log("Response status:", response.status);
         const data = await response.json();
+        console.log("Response data:", data);
+
         if (data.ticketKey) {
-          appendMessage("bot", `✅ Ticket created: ${data.ticketKey}`);
+          appendMessage("bot", `✅ Ticket created successfully: <b>${data.ticketKey}</b>`);
+        } else if (data.error) {
+          appendMessage("bot", `⚠️ Jira error: ${data.error}`);
         } else {
           appendMessage("bot", "⚠️ Failed to create a ticket.");
         }
       } catch (error) {
-        appendMessage("bot", "⚠️ Error connecting to server.");
+        console.error("❌ Ticket creation failed:", error);
+        appendMessage("bot", "⚠️ Error connecting to the server.");
       }
     }
 
     // Send message on Enter
-    inputField.addEventListener("keydown", function(e) {
+    inputField.addEventListener("keydown", function (e) {
       if (e.key === "Enter") sendMessage();
     });
 
