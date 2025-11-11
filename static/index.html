@@ -5,15 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Netsol Support Chatbot</title>
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: "Inter", Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Arial, sans-serif;
       background: #f8f9fa;
       margin: 0;
       padding: 0;
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
+      min-height: 100vh;
     }
 
     .chat-container {
@@ -33,7 +37,7 @@
       color: white;
       text-align: center;
       padding: 14px;
-      font-weight: bold;
+      font-weight: 600;
       font-size: 18px;
     }
 
@@ -44,6 +48,7 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
+      scroll-behavior: smooth;
     }
 
     .message {
@@ -53,6 +58,19 @@
       line-height: 1.4;
       font-size: 15px;
       white-space: pre-line;
+      word-wrap: break-word;
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .user {
@@ -67,18 +85,69 @@
       color: #333;
     }
 
-    .feedback-buttons {
-      margin-top: 5px;
+    .loading {
+      align-self: flex-start;
+      padding: 10px 14px;
+      background-color: #f1f3f6;
+      border-radius: 10px;
+      max-width: 80%;
+    }
+
+    .loading-dots {
       display: flex;
-      gap: 5px;
+      gap: 4px;
+    }
+
+    .loading-dots span {
+      width: 8px;
+      height: 8px;
+      background-color: #999;
+      border-radius: 50%;
+      animation: bounce 1.4s infinite ease-in-out both;
+    }
+
+    .loading-dots span:nth-child(1) {
+      animation-delay: -0.32s;
+    }
+
+    .loading-dots span:nth-child(2) {
+      animation-delay: -0.16s;
+    }
+
+    @keyframes bounce {
+      0%, 80%, 100% {
+        transform: scale(0);
+      }
+      40% {
+        transform: scale(1);
+      }
+    }
+
+    .feedback-buttons {
+      margin-top: 8px;
+      display: flex;
+      gap: 6px;
     }
 
     .feedback-buttons button {
-      padding: 4px 8px;
-      font-size: 13px;
+      padding: 5px 10px;
+      font-size: 12px;
       border-radius: 6px;
       cursor: pointer;
       border: none;
+      transition: all 0.2s ease;
+      font-weight: 500;
+    }
+
+    .feedback-buttons button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .feedback-buttons button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
     }
 
     .feedback-buttons button.helpful {
@@ -91,6 +160,13 @@
       color: white;
     }
 
+    .feedback-result {
+      font-style: italic;
+      color: #666;
+      font-size: 13px;
+      margin-top: 5px;
+    }
+
     .input-container {
       display: flex;
       border-top: 1px solid #eee;
@@ -100,11 +176,17 @@
 
     #message-input {
       flex: 1;
-      padding: 10px;
+      padding: 10px 12px;
       border: 1px solid #ccc;
       border-radius: 8px;
       font-size: 14px;
       outline: none;
+      transition: border-color 0.2s ease;
+      font-family: inherit;
+    }
+
+    #message-input:focus {
+      border-color: #0052cc;
     }
 
     #send-btn {
@@ -116,10 +198,38 @@
       border-radius: 8px;
       cursor: pointer;
       font-weight: 500;
+      transition: background-color 0.2s ease;
+      white-space: nowrap;
     }
 
-    #send-btn:hover {
+    #send-btn:hover:not(:disabled) {
       background-color: #0747a6;
+    }
+
+    #send-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .error-message {
+      background-color: #fee;
+      color: #c00;
+      padding: 10px;
+      border-radius: 8px;
+      margin: 5px 0;
+      font-size: 14px;
+    }
+
+    @media (max-width: 500px) {
+      .chat-container {
+        max-width: 100%;
+        height: 100vh;
+        border-radius: 0;
+      }
+
+      .message {
+        max-width: 85%;
+      }
     }
 
     @media (max-height: 600px) {
@@ -135,114 +245,275 @@
     <div id="chat-box"></div>
 
     <div class="input-container">
-      <input id="message-input" type="text" placeholder="Type a message..." />
+      <input id="message-input" type="text" placeholder="Type a message..." autocomplete="off" />
       <button id="send-btn">Send</button>
     </div>
   </div>
 
   <script>
-    const conversationHistory = [
-      {
-        role: "system",
-        content:
-          "You are a helpful, concise, and professional support assistant for the Netsol Support team. " +
-          "Answer in structured steps or bullets. Use a friendly tone. Assist with NetSol queries."
+    // Configuration
+    const CONFIG = {
+      MAX_HISTORY_LENGTH: 50,
+      REQUEST_TIMEOUT: 30000,
+      DEBOUNCE_DELAY: 300,
+      API_ENDPOINTS: {
+        chat: '/chat',
+        ticket: '/create-ticket'
       }
-    ];
+    };
 
-    const chatBox = document.getElementById("chat-box");
-    const inputField = document.getElementById("message-input");
-    const sendBtn = document.getElementById("send-btn");
-
-    async function sendMessage() {
-      const message = inputField.value.trim();
-      if (!message) return;
-
-      appendMessage("user", `<b>You:</b> ${message}`);
-      conversationHistory.push({ role: "user", content: message });
-      inputField.value = "";
-
-      try {
-        const response = await fetch("/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: conversationHistory })
-        });
-
-        const data = await response.json();
-        const botMessage = data.reply || "Sorry, I didn’t understand that.";
-        appendBotMessage(botMessage, message);
-        conversationHistory.push({ role: "assistant", content: botMessage });
-      } catch (error) {
-        appendMessage("bot", "⚠️ Error connecting to server.");
-      }
-
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    function appendMessage(role, text) {
-      chatBox.innerHTML += `<div class="message ${role}">${text}</div>`;
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    function appendBotMessage(botMessage, userMessage) {
-      const encodedUserMessage = encodeURIComponent(userMessage);
-      const encodedBotMessage = encodeURIComponent(botMessage);
-
-      chatBox.innerHTML += `
-        <div class="message bot">
-          ${botMessage.replace(/\n/g, "<br>")}
-          <div class="feedback-buttons">
-            <button class="helpful" onclick="markHelpful(this)">✅ Helpful</button>
-            <button class="not-helpful" onclick="createJiraTicket('${encodedUserMessage}', '${encodedBotMessage}')">❌ Not Helpful</button>
-          </div>
-        </div>
-      `;
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    function markHelpful(button) {
-      button.parentElement.innerHTML = "<i>Marked as helpful ✅</i>";
-    }
-
-    async function createJiraTicket(encodedUserMessage, encodedBotMessage) {
-      try {
-        const userMessage = decodeURIComponent(encodedUserMessage);
-        const botMessage = decodeURIComponent(encodedBotMessage);
-
-        console.log("📝 Creating Jira ticket...");
-        console.log("User message:", userMessage);
-        console.log("Bot message:", botMessage);
-
-        const response = await fetch("/create-ticket", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userMessage, botMessage })
-        });
-
-        console.log("Response status:", response.status);
-        const data = await response.json();
-        console.log("Response data:", data);
-
-        if (data.ticketKey) {
-          appendMessage("bot", `✅ Ticket created successfully: <b>${data.ticketKey}</b>`);
-        } else if (data.error) {
-          appendMessage("bot", `⚠️ Jira error: ${data.error}`);
-        } else {
-          appendMessage("bot", "⚠️ Failed to create a ticket.");
+    // State management
+    const state = {
+      conversationHistory: [
+        {
+          role: "system",
+          content: "You are a helpful, concise, and professional support assistant for the Netsol Support team. " +
+                   "Answer in structured steps or bullets. Use a friendly tone. Assist with NetSol queries."
         }
-      } catch (error) {
-        console.error("❌ Ticket creation failed:", error);
-        appendMessage("bot", "⚠️ Error connecting to the server.");
-      }
-    }
+      ],
+      isProcessing: false,
+      messageQueue: []
+    };
 
-    // Send message on Enter
-    inputField.addEventListener("keydown", function (e) {
-      if (e.key === "Enter") sendMessage();
+    // DOM elements - cache for better performance
+    const elements = {
+      chatBox: document.getElementById("chat-box"),
+      inputField: document.getElementById("message-input"),
+      sendBtn: document.getElementById("send-btn")
+    };
+
+    // Utility functions
+    const utils = {
+      escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      },
+
+      sanitizeMessage(message) {
+        return message.trim().substring(0, 5000); // Limit message length
+      },
+
+      scrollToBottom() {
+        requestAnimationFrame(() => {
+          elements.chatBox.scrollTop = elements.chatBox.scrollHeight;
+        });
+      },
+
+      createMessageElement(role, content, includeLabel = false) {
+        const div = document.createElement('div');
+        div.className = `message ${role}`;
+        
+        if (includeLabel && role === 'user') {
+          div.innerHTML = `<b>You:</b> ${utils.escapeHtml(content)}`;
+        } else {
+          div.innerHTML = content.replace(/\n/g, '<br>');
+        }
+        
+        return div;
+      },
+
+      showLoading() {
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'loading';
+        loadingDiv.id = 'loading-indicator';
+        loadingDiv.innerHTML = `
+          <div class="loading-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        `;
+        elements.chatBox.appendChild(loadingDiv);
+        utils.scrollToBottom();
+        return loadingDiv;
+      },
+
+      hideLoading() {
+        const loading = document.getElementById('loading-indicator');
+        if (loading) {
+          loading.remove();
+        }
+      },
+
+      trimHistory() {
+        // Keep system message + last N messages
+        if (state.conversationHistory.length > CONFIG.MAX_HISTORY_LENGTH) {
+          const systemMsg = state.conversationHistory[0];
+          state.conversationHistory = [
+            systemMsg,
+            ...state.conversationHistory.slice(-CONFIG.MAX_HISTORY_LENGTH + 1)
+          ];
+        }
+      },
+
+      async fetchWithTimeout(url, options, timeout = CONFIG.REQUEST_TIMEOUT) {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+
+        try {
+          const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+          });
+          clearTimeout(id);
+          return response;
+        } catch (error) {
+          clearTimeout(id);
+          throw error;
+        }
+      }
+    };
+
+    // Message handling
+    const messageHandler = {
+      async send() {
+        const message = utils.sanitizeMessage(elements.inputField.value);
+        if (!message || state.isProcessing) return;
+
+        state.isProcessing = true;
+        elements.sendBtn.disabled = true;
+        elements.inputField.disabled = true;
+
+        // Display user message
+        const userMsg = utils.createMessageElement('user', message, true);
+        elements.chatBox.appendChild(userMsg);
+        elements.inputField.value = "";
+        utils.scrollToBottom();
+
+        // Add to history
+        state.conversationHistory.push({ role: "user", content: message });
+        utils.trimHistory();
+
+        const loadingIndicator = utils.showLoading();
+
+        try {
+          const response = await utils.fetchWithTimeout(
+            CONFIG.API_ENDPOINTS.chat,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ messages: state.conversationHistory })
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+          }
+
+          const data = await response.json();
+          const botMessage = data.reply || "Sorry, I didn't understand that.";
+
+          utils.hideLoading();
+          feedbackHandler.displayBotMessage(botMessage, message);
+
+          state.conversationHistory.push({ role: "assistant", content: botMessage });
+          utils.trimHistory();
+
+        } catch (error) {
+          console.error("Chat error:", error);
+          utils.hideLoading();
+          
+          const errorMsg = error.name === 'AbortError' 
+            ? "⚠️ Request timeout. Please try again."
+            : "⚠️ Error connecting to server. Please check your connection.";
+          
+          const errorDiv = utils.createMessageElement('bot', errorMsg);
+          elements.chatBox.appendChild(errorDiv);
+        } finally {
+          state.isProcessing = false;
+          elements.sendBtn.disabled = false;
+          elements.inputField.disabled = false;
+          elements.inputField.focus();
+          utils.scrollToBottom();
+        }
+      }
+    };
+
+    // Feedback handling
+    const feedbackHandler = {
+      displayBotMessage(botMessage, userMessage) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message bot';
+        
+        const messageId = `msg-${Date.now()}`;
+        messageDiv.innerHTML = `
+          ${utils.escapeHtml(botMessage).replace(/\n/g, '<br>')}
+          <div class="feedback-buttons" id="${messageId}">
+            <button class="helpful" onclick="feedbackHandler.markHelpful('${messageId}')">✅ Helpful</button>
+            <button class="not-helpful" onclick="feedbackHandler.createTicket('${messageId}', \`${userMessage.replace(/`/g, '\\`')}\`, \`${botMessage.replace(/`/g, '\\`')}\`)">❌ Not Helpful</button>
+          </div>
+        `;
+        
+        elements.chatBox.appendChild(messageDiv);
+        utils.scrollToBottom();
+      },
+
+      markHelpful(messageId) {
+        const feedbackDiv = document.getElementById(messageId);
+        if (feedbackDiv) {
+          feedbackDiv.innerHTML = '<div class="feedback-result">Marked as helpful ✅</div>';
+        }
+      },
+
+      async createTicket(messageId, userMessage, botMessage) {
+        const feedbackDiv = document.getElementById(messageId);
+        if (!feedbackDiv) return;
+
+        // Disable buttons
+        const buttons = feedbackDiv.querySelectorAll('button');
+        buttons.forEach(btn => btn.disabled = true);
+
+        try {
+          const response = await utils.fetchWithTimeout(
+            CONFIG.API_ENDPOINTS.ticket,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ 
+                userMessage: userMessage,
+                botMessage: botMessage 
+              })
+            }
+          );
+
+          const data = await response.json();
+
+          if (data.ticketKey) {
+            feedbackDiv.innerHTML = `<div class="feedback-result">✅ Ticket created: <b>${utils.escapeHtml(data.ticketKey)}</b></div>`;
+          } else {
+            throw new Error(data.error || "Failed to create ticket");
+          }
+
+        } catch (error) {
+          console.error("Ticket creation error:", error);
+          feedbackDiv.innerHTML = `<div class="feedback-result error-message">⚠️ ${utils.escapeHtml(error.message)}</div>`;
+          
+          // Re-enable buttons after error
+          setTimeout(() => {
+            buttons.forEach(btn => btn.disabled = false);
+          }, 2000);
+        }
+      }
+    };
+
+    // Event listeners
+    elements.inputField.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        messageHandler.send();
+      }
     });
 
-    sendBtn.addEventListener("click", sendMessage);
+    elements.sendBtn.addEventListener("click", () => {
+      messageHandler.send();
+    });
+
+    // Focus input on load
+    elements.inputField.focus();
+
+    // Make feedbackHandler globally accessible for inline onclick handlers
+    window.feedbackHandler = feedbackHandler;
   </script>
 </body>
 </html>

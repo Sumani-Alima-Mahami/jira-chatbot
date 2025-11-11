@@ -77,7 +77,7 @@ def create_ticket():
         if not user_message or not bot_message:
             return jsonify({"error": "Missing message content"}), 400
 
-        # Prepare Jira issue payload
+        # Prepare issue payload
         issue_data = {
             "fields": {
                 "project": {"key": jira_project_key},
