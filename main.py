@@ -12,7 +12,7 @@ load_dotenv()
 app = Flask(__name__, static_folder="static")
 CORS(app)
 
-#  Embedding in Confluence
+# Allow embedding in Confluence or other iframes
 @app.after_request
 def add_headers(response):
     response.headers["X-Frame-Options"] = "ALLOWALL"
@@ -22,7 +22,7 @@ def add_headers(response):
 # OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# configuration
+# Jira configuration
 netsol_url = os.getenv("NETSOL_URL")
 jira_project_key = os.getenv("JIRA_PROJECT_KEY")
 netsol_email = os.getenv("NETSOL_EMAIL")
@@ -43,7 +43,7 @@ def chat():
         if not messages:
             return jsonify({"reply": "Please say something!"}), 400
 
-        # Ensure system prompt
+        # Ensure system prompt is first
         if not any(m['role'] == 'system' for m in messages):
             messages.insert(0, {
                 "role": "system",
@@ -63,7 +63,7 @@ def chat():
         return jsonify({"reply": bot_reply})
 
     except Exception as e:
-        print(f" Error in /chat: {e}")
+        print(f"Error in /chat: {e}")
         return jsonify({"error": str(e), "reply": "⚠️ Something went wrong on the server."}), 500
 
 
@@ -77,7 +77,7 @@ def create_ticket():
         if not user_message or not bot_message:
             return jsonify({"error": "Missing message content"}), 400
 
-        # Prepare issue payload
+        # Prepare Jira issue payload
         issue_data = {
             "fields": {
                 "project": {"key": jira_project_key},
@@ -86,10 +86,11 @@ def create_ticket():
                 "issuetype": {"name": "Task"}
             }
         }
-            print("Jira payload:", issue_data)
-            print("Sending to:", netsol_url)
-            print("Using project key:", jira_project_key)
 
+        # Debug prints
+        print("Jira payload:", issue_data)
+        print("Sending to:", netsol_url)
+        print("Using project key:", jira_project_key)
 
         response = requests.post(
             f"{netsol_url}/rest/api/3/issue",
@@ -98,9 +99,8 @@ def create_ticket():
             headers={"Accept": "application/json", "Content-Type": "application/json"}
         )
 
-            print("Jira response status:", response.status_code)
-            print("Jira response body:", response.text)
-
+        print("Jira response status:", response.status_code)
+        print("Jira response body:", response.text)
 
         if response.status_code == 201:
             ticket_key = response.json().get("key")
@@ -110,7 +110,7 @@ def create_ticket():
             return jsonify({"error": "Failed to create ticket"}), 500
 
     except Exception as e:
-        print(f" Error in /create-ticket: {e}")
+        print(f"Error in /create-ticket: {e}")
         return jsonify({"error": str(e)}), 500
 
 
