@@ -86,6 +86,10 @@ def create_ticket():
                 "issuetype": {"name": "Task"}
             }
         }
+            print("Jira payload:", issue_data)
+            print("Sending to:", netsol_url)
+            print("Using project key:", jira_project_key)
+
 
         response = requests.post(
             f"{netsol_url}/rest/api/3/issue",
@@ -93,6 +97,10 @@ def create_ticket():
             auth=HTTPBasicAuth(netsol_email, netsol_api_token),
             headers={"Accept": "application/json", "Content-Type": "application/json"}
         )
+
+            print("Jira response status:", response.status_code)
+            print("Jira response body:", response.text)
+
 
         if response.status_code == 201:
             ticket_key = response.json().get("key")
