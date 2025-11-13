@@ -1,13 +1,9 @@
 services:
   - type: web
-    name: NETSOL SUPPORT Chatbot
+    name: netsol-support-chatbot
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn main:app
     envVars:
       - key: OPENAI_API_KEY
-        sync: false
-      - key: NETSOL_EMAIL
-        sync: false
-      - key: NETSOL_API_TOKEN
         sync: false

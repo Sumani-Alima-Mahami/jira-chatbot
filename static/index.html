@@ -219,6 +219,15 @@
       margin: 5px 0;
       font-size: 14px;
     }
+    .feedback-result a {
+      color: #0052cc;
+      text-decoration: underline;
+      font-weight: 600;
+    }
+    .feedback-result a:hover {
+      color: #0747a6;
+    }
+
 
     @media (max-width: 500px) {
       .chat-container {
@@ -456,45 +465,30 @@
         }
       },
 
-      async createTicket(messageId, userMessage, botMessage) {
-        const feedbackDiv = document.getElementById(messageId);
-        if (!feedbackDiv) return;
+      createTicket(messageId, userMessage, botMessage) {
+  const feedbackDiv = document.getElementById(messageId);
+  if (!feedbackDiv) return;
 
-        // Disable buttons
-        const buttons = feedbackDiv.querySelectorAll('button');
-        buttons.forEach(btn => btn.disabled = true);
+  // Disable buttons
+  const buttons = feedbackDiv.querySelectorAll('button');
+  buttons.forEach(btn => btn.disabled = true);
 
-        try {
-          const response = await utils.fetchWithTimeout(
-            CONFIG.API_ENDPOINTS.ticket,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ 
-                userMessage: userMessage,
-                botMessage: botMessage 
-              })
-            }
-          );
+  // Show “create ticket” message and link
+  const ticketUrl = "https://netsolghana.atlassian.net/servicedesk/customer/portal/34";
+  feedbackDiv.innerHTML = `
+    <div class="feedback-result">
+      Sorry this wasn’t helpful.<br>
+      You can create a support ticket here:
+      <a href="${ticketUrl}" target="_blank" style="color:#0052cc; text-decoration:underline; font-weight:500;">
+        Open Support Portal
+      </a>
+    </div>
+  `;
 
-          const data = await response.json();
+  // Optionally show an alert or popup (optional, can remove if you prefer)
+  alert("Sorry this wasn’t helpful. You can create a support ticket on our portal.");
+}
 
-          if (data.ticketKey) {
-            feedbackDiv.innerHTML = `<div class="feedback-result">✅ Ticket created: <b>${utils.escapeHtml(data.ticketKey)}</b></div>`;
-          } else {
-            throw new Error(data.error || "Failed to create ticket");
-          }
-
-        } catch (error) {
-          console.error("Ticket creation error:", error);
-          feedbackDiv.innerHTML = `<div class="feedback-result error-message">⚠️ ${utils.escapeHtml(error.message)}</div>`;
-          
-          // Re-enable buttons after error
-          setTimeout(() => {
-            buttons.forEach(btn => btn.disabled = false);
-          }, 2000);
-        }
-      }
     };
 
     // Event listeners
