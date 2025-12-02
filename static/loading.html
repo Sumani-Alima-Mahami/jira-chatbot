@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Launching Support Assistant…</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f7fa;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      text-align: center;
+      color: #333;
+    }
+
+    .loader {
+      border: 6px solid #ddd;
+      border-top: 6px solid #1868db;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    p {
+      margin-top: 10px;
+      color: #555;
+    }
+  </style>
+
+  <script>
+    async function checkBot() {
+      try {
+        let response = await fetch("https://netsol-support-chatbot.onrender.com", {
+          method: "GET",
+          cache: "no-store"
+        });
+
+        if (response.status === 200) {
+          window.location.href = "https://netsol-support-chatbot.onrender.com";
+        } else {
+          setTimeout(checkBot, 2000);
+        }
+      } catch (e) {
+        setTimeout(checkBot, 2000);
+      }
+    }
+
+    window.onload = checkBot;
+  </script>
+</head>
+
+<body>
+  <div>
+    <div class="loader"></div>
+    <h2>Launching Support Assistant…</h2>
+    <p>This normally takes a few seconds.</p>
+  </div>
+</body>
+</html>
